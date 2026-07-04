@@ -1,5 +1,8 @@
 """Run sample test cases for all puzzles and algorithms."""
 
+import sys
+from io import StringIO
+
 from lemon_watchman import initial_lemons
 from chessboard_squares import count_squares, count_visible_unit_squares
 from chessboard_rectangles import count_rectangles
@@ -10,43 +13,92 @@ from shortest_path import (
     floyd_warshall_all_pairs,
 )
 
+WIDTH = 72
 
-def print_header(title: str) -> None:
-    print("\n" + "=" * 60)
-    print(title)
-    print("=" * 60)
+
+def rule(char: str = "─") -> None:
+    print(char * WIDTH)
+
+
+def section(num: int, title: str) -> None:
+    print()
+    rule("═")
+    print(f"  {num}. {title}")
+    rule("═")
+
+
+def label(text: str) -> None:
+    print(f"  {text}")
+
+
+def result(key: str, value: str) -> None:
+    print(f"    {key:<22} {value}")
+
+
+def blank() -> None:
+    print()
 
 
 def test_lemon_watchman() -> None:
-    print_header("1. Lemon / Watchman / Farm Puzzle")
+    section(1, "Lemon / Watchman / Farm Puzzle")
+    label("Problem : At each of N gates, a watchman takes half the lemons")
+    label("          plus one more. After all gates, 1 lemon remains.")
+    label("Approach: Work backwards — before a gate: 2 × (remaining + 1)")
+    blank()
+    label("Gate Count (N)    Initial Lemons Stolen")
+    rule()
     for n in [1, 2, 3, 4, 5]:
-        result = initial_lemons(n)
-        print(f"  N = {n} gates -> initially stole {result} lemons")
+        lemons = initial_lemons(n)
+        print(f"       {n}                  {lemons}")
+    blank()
+    n_demo = 3
+    result("Example (N=3)", f"{initial_lemons(n_demo)} lemons → 1 remains after 3 gates")
 
 
 def test_chessboard_squares() -> None:
-    print_header("2. Number of Squares on a Chessboard (8x8)")
+    section(2, "Number of Squares on a Chessboard")
     n = 8
     unit = count_visible_unit_squares(n)
     total = count_squares(n)
-    print(f"  Visible 1x1 squares: {unit}")
-    print(f"  Total squares (all sizes): {total}")
+    label(f"Board   : {n} × {n} standard chessboard")
+    label("Formula : 1² + 2² + … + n² = n(n+1)(2n+1) / 6")
+    blank()
+    result("1×1 squares (visible)", str(unit))
+    result("All sizes combined", str(total))
+    blank()
+    label("Breakdown by size:")
+    for size in range(1, n + 1):
+        count = (n - size + 1) ** 2
+        print(f"      {size}×{size} squares : {count:>3}")
 
 
 def test_chessboard_rectangles() -> None:
-    print_header("3. Number of Rectangles on a Chessboard (8x8)")
+    section(3, "Number of Rectangles on a Chessboard")
     n = 8
+    squares = count_squares(n)
     all_rects = count_rectangles(n, include_squares=True)
     non_square_rects = count_rectangles(n, include_squares=False)
-    print(f"  Total rectangles (including squares): {all_rects}")
-    print(f"  Rectangles excluding squares: {non_square_rects}")
-    print(f"  Check: {all_rects} - {count_squares(n)} = {non_square_rects}")
+    label(f"Board   : {n} × {n} standard chessboard")
+    label("Formula : (1 + 2 + … + n)² = (n(n+1)/2)²")
+    blank()
+    result("Total rectangles", str(all_rects))
+    result("Squares only", str(squares))
+    result("Non-square rectangles", str(non_square_rects))
+    blank()
+    label(f"Verification : {all_rects} − {squares} = {non_square_rects}")
 
 
 def test_shortest_paths() -> None:
-    print_header("4. Shortest Path Between Two Nodes")
+    section(4, "Shortest Path Between Two Nodes")
 
-    # Unweighted -> BFS
+    label("Graph type              Algorithm")
+    rule()
+    label("Unweighted              BFS")
+    label("Weighted (positive)     Dijkstra")
+    label("Negative weights        Bellman–Ford")
+    label("All-pairs               Floyd–Warshall")
+    blank()
+
     unweighted = {
         "A": ["B", "C"],
         "B": ["D"],
@@ -54,11 +106,12 @@ def test_shortest_paths() -> None:
         "D": [],
     }
     dist, path = bfs_shortest_path(unweighted, "A", "D")
-    print(f"  BFS (unweighted): A -> D")
-    print(f"    Distance (hops): {int(dist)}")
-    print(f"    Path: {' -> '.join(path)}")
+    label("▸ BFS  (unweighted graph)")
+    result("Source → Destination", "A → D")
+    result("Shortest distance", f"{int(dist)} hops")
+    result("Path", " → ".join(path))
+    blank()
 
-    # Weighted positive -> Dijkstra
     weighted = {
         "A": [("B", 4.0), ("C", 2.0)],
         "B": [("D", 5.0)],
@@ -66,11 +119,12 @@ def test_shortest_paths() -> None:
         "D": [],
     }
     dist, path = dijkstra_shortest_path(weighted, "A", "D")
-    print(f"\n  Dijkstra (non-negative weights): A -> D")
-    print(f"    Distance: {dist}")
-    print(f"    Path: {' -> '.join(path)}")
+    label("▸ Dijkstra  (non-negative weights)")
+    result("Source → Destination", "A → D")
+    result("Shortest distance", str(dist))
+    result("Path", " → ".join(path))
+    blank()
 
-    # Negative weights -> Bellman-Ford
     with_negative = {
         "A": [("B", 1.0), ("C", 4.0)],
         "B": [("C", -2.0), ("D", 3.0)],
@@ -78,11 +132,12 @@ def test_shortest_paths() -> None:
         "D": [],
     }
     dist, path = bellman_ford_shortest_path(with_negative, "A", "D")
-    print(f"\n  Bellman-Ford (negative weights allowed): A -> D")
-    print(f"    Distance: {dist}")
-    print(f"    Path: {' -> '.join(path)}")
+    label("▸ Bellman–Ford  (negative weights allowed)")
+    result("Source → Destination", "A → D")
+    result("Shortest distance", str(dist))
+    result("Path", " → ".join(path))
+    blank()
 
-    # All pairs -> Floyd-Warshall
     inf = float("inf")
     labels = ["A", "B", "C", "D"]
     matrix = [
@@ -92,20 +147,47 @@ def test_shortest_paths() -> None:
         [2, inf, inf, 0],
     ]
     dist_matrix, paths = floyd_warshall_all_pairs(matrix, labels)
-    print(f"\n  Floyd-Warshall (all-pairs): A -> D")
-    print(f"    Distance: {dist_matrix[0][3]}")
-    print(f"    Path: {' -> '.join(paths[('A', 'D')])}")
+    label("▸ Floyd–Warshall  (all-pairs shortest paths)")
+    result("Source → Destination", "A → D")
+    result("Shortest distance", str(dist_matrix[0][3]))
+    result("Path", " → ".join(paths[("A", "D")]))
+
+
+def build_output() -> str:
+    buffer = StringIO()
+    original_stdout = sys.stdout
+    sys.stdout = buffer
+    try:
+        print_banner()
+        test_lemon_watchman()
+        test_chessboard_squares()
+        test_chessboard_rectangles()
+        test_shortest_paths()
+        print_footer()
+    finally:
+        sys.stdout = original_stdout
+    return buffer.getvalue()
+
+
+def print_banner() -> None:
+    rule("═")
+    print("  CLASSIC INTERVIEW PUZZLES & GRAPH ALGORITHMS")
+    print("  Python Implementations — Sample Output")
+    rule("═")
+
+
+def print_footer() -> None:
+    print()
+    rule("═")
+    print("  All test cases completed successfully.")
+    rule("═")
+    print()
 
 
 def main() -> None:
-    print("Running all puzzle and algorithm test cases...\n")
-    test_lemon_watchman()
-    test_chessboard_squares()
-    test_chessboard_rectangles()
-    test_shortest_paths()
-    print("\n" + "=" * 60)
-    print("All tests completed.")
-    print("=" * 60)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    print(build_output(), end="")
 
 
 if __name__ == "__main__":
